@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Jeu - Les Aventuriers du Rail</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 30px;
+      background: linear-gradient(to bottom, #d0eaff, #ffffff);
+    }
+    h1 {
+      text-align: center;
+      font-size: 36px;
+      color: #2c3e50;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+    #plateau-container {
+      border: 2px solid #444;
+      padding: 20px;
+      background-color: #f8f9fa;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      border-radius: 12px;
+    }
+    canvas {
+      border: 2px solid #2c3e50;
+      border-radius: 10px;
+    }
+    #joueur-actuel {
+      margin-bottom: 10px;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      color: #333;
+    }
+    #btn-reset, #btn-demo {
+      margin: 10px;
+      padding: 10px 18px;
+      font-size: 16px;
+      cursor: pointer;
+      font-family: inherit;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      transition: background-color 0.3s ease;
+    }
+    #btn-reset:hover, #btn-demo:hover {
+      background-color: #2980b9;
+    }
+    #scores {
+      margin-bottom: 20px;
+      font-size: 18px;
+      text-align: center;
+      color: #2c3e50;
+    }
+    #message-fin {
+      font-size: 24px;
+      font-weight: bold;
+      color: #27ae60;
+      margin-top: 20px;
+      text-align: center;
+      animation: pop 0.4s ease-out;
+    }
+    @keyframes pop {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Jeu - Les Aventuriers du Rail</h1>
+
+  <div id="joueur-actuel">
+    Joueur actuel : <span id="nom-joueur" style="font-weight: bold;">...</span>
+  </div>
+
+  <div id="scores">
+    Score Rouge : <span id="score-rouge">0</span> | Score Bleu : <span id="score-bleu">0</span>
+  </div>
+
+  <div style="text-align: center;">
+    <button id="btn-reset">🔄 Réinitialiser la partie</button>
+    <button id="btn-demo">🎬 Lancer la démo automatique</button>
+  </div>
+
+  <div id="plateau-container" style="display: flex; justify-content: space-between; margin-top: 20px;">
+    <canvas id="plateauCanvas" width="800" height="600"></canvas>
+
+    <div id="image-droite" style="margin-left: 20px; flex-shrink: 0;">
+      <img src="1647-Aventuriers-du-Rail-France-1.jpg" alt="illustration" width="700" style="border: 1px solid #ccc; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+    </div>
+  </div>
+
+  <div id="message-fin"></div>
+
+  <script type="module">
+    import { Ville } from './ville.js';
+    import { Route } from './Route.js';
+    import { Jeu } from './jeu.js';
+    import { Etat } from './Etat.js';
+
+    const canvas = document.getElementById('plateauCanvas');
+    const context = canvas.getContext('2d');
+    const spanNomJoueur = document.getElementById('nom-joueur');
+    const spanScoreRouge = document.getElementById('score-rouge');
+    const spanScoreBleu = document.getElementById('score-bleu');
+    const btnReset = document.getElementById('btn-reset');
+    const btnDemo = document.getElementById('btn-demo');
+    const messageFin = document.getElementById('message-fin');
+
+    const jeu = new Jeu();
+
+    const joueurs = [
+      new Etat("Joueur Rouge", "darkred"),
+      new Etat("Joueur Bleu", "blue")
+    ];
+    let scores = [0, 0];
+    let indexJoueur = 0;
+    let joueurActuel = joueurs[indexJoueur];
+    let villes = {};
+
+    function afficherJoueurActuel() {
+      spanNomJoueur.textContent = joueurActuel.getNom();
+      spanNomJoueur.style.color = joueurActuel.getCouleur();
+    }
+
+    function mettreAJourScores() {
+      spanScoreRouge.textContent = scores[0].toString();
+      spanScoreBleu.textContent = scores[1].toString();
+    }
+
+    function verifierFinDePartie() {
+      const toutesPrises = jeu.routes.every(route => route.proprietaire !== null);
+      if (toutesPrises) {
+        const gagnant = scores[0] > scores[1] ? joueurs[0] : joueurs[1];
+        messageFin.textContent = `✅ ${gagnant.getNom()} a gagné !`;
+      }
+    }
+
+    function initialiserPlateau() {
+      jeu.villes = [];
+      jeu.routes = [];
+      villes = {};
+
+      const paris = new Ville("Paris", 400, 150);
+      const lyon = new Ville("Lyon", 520, 330);
+      const marseille = new Ville("Marseille", 560, 470);
+      const lille = new Ville("Lille", 445, 50);
+      const toulouse = new Ville("Toulouse", 340, 440);
+      const bordeaux = new Ville("Bordeaux", 270, 380);
+
+      villes = { paris, lyon, marseille, lille, toulouse, bordeaux };
+
+      for (let ville of Object.values(villes)) jeu.ajouterVille(ville);
+
+      const routes = [
+        [paris, lyon], [lyon, marseille], [paris, marseille],
+        [paris, lille], [lyon, lille], [paris, toulouse],
+        [toulouse, marseille], [bordeaux, lyon],
+        [bordeaux, paris], [bordeaux, toulouse]
+      ];
+
+      for (let [v1, v2] of routes) {
+        const route = new Route(v1, v2, "gray");
+        route.points = 5;
+        jeu.ajouterRoute(route);
+      }
+    }
+
+    const imageFond = new Image();
+    imageFond.src = "Carte_France.png";
+    imageFond.onload = () => afficherJeu();
+
+    function afficherJeu() {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(imageFond, 0, 0, canvas.width, canvas.height);
+
+      // Dessiner les routes uniquement disponibles pour le joueur actuel
+      jeu.routes.forEach(route => {
+        if (!route.proprietaire) {
+          context.beginPath();
+          context.moveTo(route.ville1.x, route.ville1.y);
+          context.lineTo(route.ville2.x, route.ville2.y);
+          context.strokeStyle = "yellow";
+          context.lineWidth = 8;
+          context.stroke();
+        }
+      });
+
+      jeu.afficher(context);
+    }
+
+    canvas.addEventListener("click", (e) => {
+      if (messageFin.textContent !== "") return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      let selected = null;
+
+      for (let route of jeu.routes) {
+        if (!route.proprietaire && route.contientCoord(x, y, 15)) {
+          selected = route;
+          break;
+        }
+      }
+
+      if (selected) {
+        selected.setProprietaire(joueurActuel);
+        if (typeof selected.points !== 'number') selected.points = 5;
+        scores[indexJoueur] += selected.points;
+
+        mettreAJourScores();
+        verifierFinDePartie();
+        indexJoueur = (indexJoueur + 1) % joueurs.length;
+        joueurActuel = joueurs[indexJoueur];
+        afficherJoueurActuel();
+      } else {
+        console.log("Aucune route disponible à cet endroit.");
+      }
+
+      afficherJeu();
+    });
+
+    btnReset.addEventListener("click", () => {
+      indexJoueur = 0;
+      joueurActuel = joueurs[indexJoueur];
+      scores = [0, 0];
+      messageFin.textContent = "";
+      afficherJoueurActuel();
+      mettreAJourScores();
+      initialiserPlateau();
+      afficherJeu();
+    });
+
+    btnDemo.addEventListener("click", async () => {
+      btnDemo.disabled = true;
+      btnReset.disabled = true;
+      indexJoueur = 0;
+      joueurActuel = joueurs[indexJoueur];
+      scores = [0, 0];
+      messageFin.textContent = "";
+      afficherJoueurActuel();
+      mettreAJourScores();
+      initialiserPlateau();
+      afficherJeu();
+
+      const cheminDemo = [
+        ["paris", "lyon"], ["lyon", "marseille"],
+        ["paris", "marseille"], ["lyon", "lille"],
+        ["paris", "lille"], ["toulouse", "marseille"],
+        ["paris", "toulouse"], ["bordeaux", "toulouse"],
+        ["bordeaux", "lyon"], ["bordeaux", "paris"]
+      ];
+
+      for (const [nom1, nom2] of cheminDemo) {
+        const route = jeu.routes.find(r =>
+          (r.ville1.nom === villes[nom1].nom && r.ville2.nom === villes[nom2].nom) ||
+          (r.ville1.nom === villes[nom2].nom && r.ville2.nom === villes[nom1].nom)
+        );
+
+        if (route && !route.proprietaire) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          route.setProprietaire(joueurActuel);
+          scores[indexJoueur] += route.points;
+          mettreAJourScores();
+          afficherJeu();
+          indexJoueur = (indexJoueur + 1) % joueurs.length;
+          joueurActuel = joueurs[indexJoueur];
+          afficherJoueurActuel();
+        }
+      }
+
+      verifierFinDePartie();
+      btnReset.disabled = false;
+    });
+
+    afficherJoueurActuel();
+    mettreAJourScores();
+    initialiserPlateau();
+    afficherJeu();
+  </script>
+</body>
+</html>
