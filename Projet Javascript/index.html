@@ -176,7 +176,7 @@
       context.clearRect(0, 0, canvas.width, canvas.height);
       context.drawImage(imageFond, 0, 0, canvas.width, canvas.height);
 
-      // Dessiner les routes uniquement disponibles pour le joueur actuel
+      
       jeu.routes.forEach(route => {
         if (!route.proprietaire) {
           context.beginPath();
